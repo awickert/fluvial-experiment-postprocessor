@@ -49,22 +49,32 @@ for DATpath in DATpaths:
   dem[dem == -9999] = np.nan
   dem /= 1000.
   # DEM import into GRASS GIS
-  DEMarray = garray.array()
-  DEMarray[...] = dem
-  DEMarray.write('tmp', overwrite=True)
-  # Compute map of null areas
-  r.mapcalc(scanNameNULL+' = isnull(tmp)')
-  # DEM null filling
-  r.fillnulls(input='tmp', output=scanNameDEM, method='bilinear', overwrite=True)
-  r.colors(map=scanNameDEM, color='wave')
-  # Shaded relief map
-  r.relief(input=scanNameDEM, output=scanNameShaded)
+  try:
+    DEMarray = garray.array()
+    DEMarray[...] = dem
+    DEMarray.write('tmp', overwrite=True)
+    # Compute map of null areas
+    r.mapcalc(scanNameNULL+' = isnull(tmp)')
+    # DEM null filling
+    r.fillnulls(input='tmp', output=scanNameDEM, method='bilinear', overwrite=False)
+    r.colors(map=scanNameDEM, color='wave')
+    # Shaded relief map
+    r.relief(input=scanNameDEM, output=scanNameShaded)
+  except:
+    pass
+
+for DATpath in DATpaths:
+  # Name
+  DATfile = os.path.split(DATpath)[-1]
 
 
 r.out_gdal(input='dem_151117_T_DW_IW_01_Scan0014', output='dem_151117_T_DW_IW_01_Scan0014.tif', format='GTiff')
 
-r.out_vtk(input='dem_151117_T_DW_IW_01_Scan0014', output='dem_151117_T_DW_IW_01_Scan0014.vtk', elevation='dem_151117_T_DW_IW_01_Scan0014', precision=4, overwrite=True)
-
+try:
+  r.out_vtk(input='dem_151117_T_DW_IW_01_Scan0014', output='dem_151117_T_DW_IW_01_Scan0014.vtk', elevation='dem_151117_T_DW_IW_01_Scan0014', precision=4, overwrite=False)
+except:
+  pass
+  
 #r.fillnulls(input='tmp', output='terrace_151124_MC_DW_IW_01_Scan0016', method='bicubic', overwrite=True)
 
 
