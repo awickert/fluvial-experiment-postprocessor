@@ -7,7 +7,7 @@ import subprocess
 
 # specify (existing) location and mapset
 #location = "G12_NA"
-gisdb    = "/media/awickert/data3/TerraceExperiment/grassdata"
+gisdb    = "/data3/TerraceExperiment/grassdata"
 location = "SAFL_Terraces_01"
 mapset   = "PERMANENT"
 
@@ -105,17 +105,17 @@ margin_bottom = 410
 margin_left = 300
 margin_right = 3700
 
+# x and y values across basin and more
+
 #sourcedir = '/media/awickert/Elements/Fluvial 2015/151109_MC_IW_01/Processed/'
 #sourcedir = '/media/awickert/data3/TerraceExperiment/Fluvial 2015/151109_MC_IW_01/Processed/'
 #sourcedirs = sorted(next(os.walk('/media/awickert/data3/TerraceExperiment/Fluvial 2015/'))[1])
-sourcedirs = sorted(glob.glob('/media/awickert/data3/TerraceExperiment/Fluvial 2015/*/Processed/'))
+sourcedirs = sorted(glob.glob('/data3/TerraceExperiment/Forgotten/*/Processed/'))
 
 length_y_trimmed = margin_top - margin_bottom
 length_x_trimmed = margin_right - margin_left
 
 g.region(w=margin_left/1000., e=margin_right/1000., s=margin_bottom/1000., n=margin_top/1000., res=0.001)
-
-
 
 errordirs = []
 errorfiles = []
@@ -168,6 +168,7 @@ for sourcedir in sourcedirs:
 
 
 # EXPORT STEP -- DO IT LATER
+"""
 for sourcedir in sourcedirs:
   DATpaths = sorted(glob.glob(sourcedir+'*.DAT'))
   for DATpath in DATpaths:
@@ -179,16 +180,55 @@ for sourcedir in sourcedirs:
     scanNameShaded = scanName+'__shaded__'+scanNumber
     try:
     r.out_gdal(input=scanNameDEM, output=scanNameDEM+'.tif', format='GTiff', overwrite=False)
+"""
 
 # Problem with duplicates
 DEMs = gscript.parse_command('g.list', type='raster', pattern='*__DEM__*').keys()
 DEMs = sorted(DEMs)
 for DEM in DEMs:
-  print DEM
-  try:
-    r.out_gdal(input=DEM, output=DEM+'.tif', format='GTiff', overwrite=False)
-  except:
-    print "Map already present"
+  outname = DEM+'.tif'
+  if os.path.isfile(outname):
+    print "Not overwriting", outname
+  else:
+    print DEM
+    r.out_gdal(input=DEM, output=outname, format='GTiff', overwrite=False)
+
+
+maps = gscript.parse_command('g.list', type='raster', pattern='*__shaded__*').keys()
+maps = sorted(maps)
+for mapi in maps:
+  outname = mapi+'.tif'
+  if os.path.isfile(outname):
+    print "Not overwriting", outname
+  else:
+    print DEM
+    r.out_gdal(input=mapi, output=outname, format='GTiff', overwrite=False)
+
+
+# Placeholder to make these into future functions
+def outputByType(self):
+  pass
+
+
+
+
+# Start in the lowest cell along the left-hand side of the experiment
+# May want to make this a user-defined region in the future.
+
+r.mapcalc
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 """
 try:
