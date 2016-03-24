@@ -115,7 +115,16 @@ sourcedirs = sorted(glob.glob('/data3/TerraceExperiment/Forgotten/*/Processed/')
 length_y_trimmed = margin_top - margin_bottom
 length_x_trimmed = margin_right - margin_left
 
-g.region(w=margin_left/1000., e=margin_right/1000., s=margin_bottom/1000., n=margin_top/1000., res=0.001)
+g.region(w=margin_left/1000., e=margin_right/1000., s=margin_bottom/1000., n=margin_top/1000., res=0.001, flags='s')
+
+# Maps of x and y
+g.region(w=0, s=0, e=np.round(np.floor(margin_right*1.5)/1000., decimals=3), n=int(np.floor(margin_top/1000.*1.5)))
+try:
+  r.mapcalc('x = x()')
+  r.mapcalc('y = y()')
+except:
+  pass
+g.region(flags='d')
 
 errordirs = []
 errorfiles = []
