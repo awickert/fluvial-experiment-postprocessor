@@ -240,9 +240,48 @@ def outputByType(self):
 
 # Start in the lowest cell along the left-hand side of the experiment
 # May want to make this a user-defined region in the future.
+# And may want to define boundaries as closed or open -- for this,
+# just r.patch a wall around everything except the end of the flume on the RHS.
 
-r.mapcalc
+reg = gscript.region()
+g.region(w=reg['w']-reg['ewres'], e=reg['e']+reg['ewres'], s=reg['s']-reg['nsres'], n=reg['n']+reg['nsres'], save='with_boundaries')
+# CUSTOM COMMANDS HERE TO CREATE WALL BASED ON X AND Y POSITIONS
+# THIS SHOULD ALSO BE PRE-DEFINED WHEN THIS IS FINISHED
+# Keep right boundary open
+mcstr = "boundaries = (x < "+str(margin_left/1000.)+") + " \
+                     "(x > "+str(margin_right/1000.)+") + " \
+                     "(y < "+str(margin_bottom/1000.)+")"
+r.mapcalc(mcstr)
+r.mapcalc("walls = walls > 0") # Logical 0/1
 
+_x = garray.array()
+_x.read('x')
+_y = garray.array()
+_y.read('y')
+
+drainarray = garray.array()
+
+DEMs = gscript.parse_command('g.list', type='raster', pattern='*__DEM__*').keys()
+DEMs = sorted(DEMs)
+for DEM in DEMs:
+  r.patch(input='boundaries,'+DEM, output='tmp', overwrite=True)
+  drainarray.read('tmp')
+  scanName = DEM.split('__DEM__')[0]
+  mainThalweg = scanName + '__main_thalweg__'
+  tribThalweg = scanName + '__trib_thalweg__'
+  # THIS SHOULD ALSO BE INPUT AT THE START
+  # Main channel
+  start_y = _y[drainarray[:,1] == np.min(drainarray[:,1]]
+  if len(start_y) > 0:
+    start_y = start_y[0] # ARBITRARY, SHOULD FIX SOMETIME, PROBABLY NOT IMPORTANT THOUGH.
+  startpoint = str(margin_left)/1000.+','+str(start_y)
+  r.drain(input='tmp', drain=mainThalweg, start_coordinates=startpoint)
+  # Tributary channel
+  start_x = _x[drainarray[-2,:] == np.min(drainarray[-2,:]] # CHECK INDEXING (TOP/BOTTOM)
+  if len(start_x) > 0:
+    start_x = start_x[0] # ARBITRARY, SHOULD FIX SOMETIME, PROBABLY NOT IMPORTANT THOUGH.
+  startpoint = str(start_x)+','+str(margin_bottom)/1000.
+  r.drain(input='tmp', drain=tribThalweg, start_coordinates=startpoint)
 
 
 
