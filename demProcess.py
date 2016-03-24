@@ -1,5 +1,6 @@
+#! /usr/bin/env python
+
 from Scientific.IO.NetCDF import NetCDFFile
-import numpy as np
 import shutil
 import os
 import sys
@@ -22,12 +23,8 @@ grass7bin_lin = 'grass71'
 # this is TODO
 grass7bin_mac = '/Applications/GRASS/GRASS-7.1.app/'
  
-# DATA
-# define GRASS DATABASE
-# add your path to grassdata (GRASS GIS database) directory
-#gisdb = os.path.join(os.path.expanduser("~"), "grassdata")
-# the following path is the default path on MS Windows
-# gisdb = os.path.join(os.path.expanduser("~"), "Documents/grassdata") 
+# Location path
+location_path = os.path.join(gisdb, location)
  
 ########### SOFTWARE
 if sys.platform.startswith('linux'):
@@ -38,18 +35,38 @@ elif sys.platform.startswith('win'):
     grass7bin = grass7bin_win
 else:
     raise OSError('Platform not configured.')
- 
+
+if os.path.isdir(location_path):
+  pass # Just do the below, shorter step.
+else: 
+  # Create new location (we assume that grass7bin is in the PATH)
+  #  from EPSG code:
+  startcmd = grass7bin+' -c '+location_path+' -e\n'
+   
+  print startcmd
+  p = subprocess.Popen(startcmd, shell=True, \
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  out, err = p.communicate()
+  if p.returncode != 0:
+      print >>sys.stderr, 'ERROR: %s' % err
+      print >>sys.stderr, 'ERROR: Cannot generate location (%s)' % startcmd
+      sys.exit(-1)
+  else:
+      print 'Created location %s' % location_path
+  # Now the location with PERMANENT mapset exists.
+# Once mapset definitely exists
 # query GRASS 7 itself for its GISBASE
 startcmd = [grass7bin, '--config', 'path']
- 
-p = subprocess.Popen(startcmd, shell=False,
+
+p = subprocess.Popen(startcmd, shell=False, \
                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 out, err = p.communicate()
 if p.returncode != 0:
     print >>sys.stderr, "ERROR: Cannot find GRASS GIS 7 start script (%s)" % startcmd
     sys.exit(-1)
+
 gisbase = out.strip('\n\r')
- 
+
 # Set GISBASE environment variable
 os.environ['GISBASE'] = gisbase
 # the following not needed with trunk
@@ -61,7 +78,7 @@ os.environ['PATH'] += os.pathsep + os.path.join(home, '.grass7', 'addons', 'scri
 # define GRASS-Python environment
 gpydir = os.path.join(gisbase, "etc", "python")
 sys.path.append(gpydir)
- 
+
 ########### DATA
 # Set GISDBASE environment variable
 os.environ['GISDBASE'] = gisdb
@@ -72,8 +89,7 @@ import grass.script.setup as gsetup
 
 ###########
 # launch session
-gsetup.init(gisbase,
-            gisdb, location, mapset)
+gsetup.init(gisbase, gisdb, location, mapset)
  
 gscript.message('Current GRASS GIS 7 environment:')
 print gscript.gisenv()
@@ -110,7 +126,8 @@ margin_right = 3700
 #sourcedir = '/media/awickert/Elements/Fluvial 2015/151109_MC_IW_01/Processed/'
 #sourcedir = '/media/awickert/data3/TerraceExperiment/Fluvial 2015/151109_MC_IW_01/Processed/'
 #sourcedirs = sorted(next(os.walk('/media/awickert/data3/TerraceExperiment/Fluvial 2015/'))[1])
-sourcedirs = sorted(glob.glob('/data3/TerraceExperiment/Forgotten/*/Processed/'))
+#sourcedirs = sorted(glob.glob('/data3/TerraceExperiment/Forgotten/*/Processed/'))
+sourcedirs = sorted(glob.glob('/data3/TerraceExperiment/Fluvial 2015/*/Processed/'))
 
 length_y_trimmed = margin_top - margin_bottom
 length_x_trimmed = margin_right - margin_left
@@ -118,7 +135,7 @@ length_x_trimmed = margin_right - margin_left
 g.region(w=margin_left/1000., e=margin_right/1000., s=margin_bottom/1000., n=margin_top/1000., res=0.001, flags='s')
 
 # Maps of x and y
-g.region(w=0, s=0, e=np.round(np.floor(margin_right*1.5)/1000., decimals=3), n=int(np.floor(margin_top/1000.*1.5)))
+g.region(w=0, s=0, e=int(np.floor(margin_right*1.5))/1000., n=int(np.floor(margin_top*1.5))/1000.)
 try:
   r.mapcalc('x = x()')
   r.mapcalc('y = y()')
