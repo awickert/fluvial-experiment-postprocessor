@@ -151,6 +151,7 @@ for sourcedir in sourcedirs:
     # Name
     DATfile = os.path.split(DATpath)[-1]
     scanName, scanNumber = DATfile.split('_Composite')[0].split('_Scan')
+    scanNameDEM_fullsize = scanName+'__DEM_full__'+scanNumber
     scanNameDEM = scanName+'__DEM__'+scanNumber
     scanNameNULL = scanName+'__NULL__'+scanNumber
     scanNameShaded = scanName+'__shaded__'+scanNumber
@@ -165,11 +166,13 @@ for sourcedir in sourcedirs:
       # DEM processing
       dem = np.fromfile(DATpath, dtype=np.float32)
       dem = dem.reshape(length_y, length_x)
+      dem[dem == -9999] = np.nan
+      dem /= 1000. # MM TO M
+      # THIS SHOULD BE EXTERNALLY SET: MAX HEIGHT
+      #dem[dem > 480] = np.nan # Trim off the tops of the input devices
+      demFull = np.flipud(dem)
       dem = dem[margin_bottom:margin_top, margin_left:margin_right]
       dem = np.flipud(dem)
-      dem[dem > 480] = np.nan # Trim off the tops of the input devices
-      dem[dem == -9999] = np.nan
-      dem /= 1000.
       # DEM import into GRASS GIS
       #try:
       DEMarray = garray.array()
@@ -244,15 +247,16 @@ def outputByType(self):
 # just r.patch a wall around everything except the end of the flume on the RHS.
 
 reg = gscript.region()
-g.region(w=reg['w']-reg['ewres'], e=reg['e']+reg['ewres'], s=reg['s']-reg['nsres'], n=reg['n']+reg['nsres'], save='with_boundaries')
+g.region(w=reg['w']-2*reg['ewres'], e=reg['e']+2*reg['ewres'], s=reg['s']-2*reg['nsres'], n=reg['n']+2*reg['nsres'], save='with_boundaries', overwrite=True)
 # CUSTOM COMMANDS HERE TO CREATE WALL BASED ON X AND Y POSITIONS
 # THIS SHOULD ALSO BE PRE-DEFINED WHEN THIS IS FINISHED
 # Keep right boundary open
-mcstr = "boundaries = (x < "+str(margin_left/1000.)+") + " \
-                     "(x > "+str(margin_right/1000.)+") + " \
-                     "(y < "+str(margin_bottom/1000.)+")"
-r.mapcalc(mcstr)
-r.mapcalc("walls = walls > 0") # Logical 0/1
+mcstr = "boundaries = (x < "+str(margin_left/1000.)+") + "+ \
+                     "(y < "+str(margin_bottom/1000.)+") + "+ \
+                     "(y > "+str(margin_top/1000.)+")"
+r.mapcalc(mcstr, overwrite=True)
+r.mapcalc("boundaries = boundaries > 0", overwrite=True) # Logical 0/1
+r.null(map='boundaries', setnull=0)
 
 _x = garray.array()
 _x.read('x')
@@ -271,10 +275,10 @@ for DEM in DEMs:
   tribThalweg = scanName + '__trib_thalweg__'
   # THIS SHOULD ALSO BE INPUT AT THE START
   # Main channel
-  start_y = _y[drainarray[:,1] == np.min(drainarray[:,1]]
+  start_y = _y[:,1][drainarray[:,1] == np.min(drainarray[:,1])]
   if len(start_y) > 0:
-    start_y = start_y[0] # ARBITRARY, SHOULD FIX SOMETIME, PROBABLY NOT IMPORTANT THOUGH.
-  startpoint = str(margin_left)/1000.+','+str(start_y)
+    start_y = start_y[0] # ARBITRARY, SHOULD FIX SOMETIME, PROBABLY NOT IMPORTANT THOUGH; COULD JUST TAKE [0], ABOVE
+  startpoint = str(margin_left/1000.)+','+str(start_y)
   r.drain(input='tmp', drain=mainThalweg, start_coordinates=startpoint)
   # Tributary channel
   start_x = _x[drainarray[-2,:] == np.min(drainarray[-2,:]] # CHECK INDEXING (TOP/BOTTOM)
