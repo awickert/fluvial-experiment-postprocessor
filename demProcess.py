@@ -109,7 +109,9 @@ import os
 import tempfile
 from grass.pygrass.modules.shortcuts import general as g
 from grass.pygrass.modules.shortcuts import raster as r
+from grass.pygrass.modules.shortcuts import vector as v
 from grass.pygrass.modules import Module
+from grass.pygrass.vector import VectorTopo
 import glob
 
 # Characteristics of basin; these should be set externally
@@ -265,6 +267,43 @@ _y.read('y')
 
 drainarray = garray.array()
 
+# Much of this will depend on experiment
+DEMs = gscript.parse_command('g.list', type='raster', pattern='*__DEM__*').keys()
+DEMs = sorted(DEMs)
+for DEM in DEMs:
+  r.patch(input='boundaries,'+DEM, output='tmp', overwrite=True)
+  drainarray.read('tmp')
+  scanName = DEM.split('__DEM__')[0]
+  mainThalweg = scanName + '__main_thalweg__'
+  tribThalweg = scanName + '__trib_thalweg__'
+  # Main channel
+  #start_x = margin_left/1000.
+  #start_y = _y[:,1][drainarray[:,1] == np.min(drainarray[:,1])]
+  flowIn = garray.array()
+  flowIn[:,2][drainarray[:,2] < (np.min(drainarray[:,2])+.01)] = 1
+  flowIn.write('tmpFlowIn', overwrite=True)
+  r.watershed(elevation='tmp', flow='tmpFlowIn', threshold=np.sum(flowIn), stream='tmpStream', accumulation='tmpAccum', flags='s', overwrite=True)
+  r.mapcalc('tmpStreamZ = (tmpStream * 0 + 1) * tmp', overwrite=True)
+  r.to_vect(input='tmpStreamZ', output='tmpStreamLine', type='line', overwrite=True)
+  r.to_vect(input='tmpStreamZ', output='tmpStreamPoints', type='point', column='z', overwrite=True)
+  v.db_addcolumn(map='tmpStreamPoints', columns='x double precision, y double precision')
+  v.to_db(map='tmpStreamPoints', option='coor', columns='x,y')
+  """
+  # Tributary channel
+  start_x = _x[drainarray[-2,:] == np.min(drainarray[-2,:])] # CHECK INDEXING (TOP/BOTTOM)
+  if len(start_x) > 0:
+    start_x = start_x[0] # ARBITRARY, SHOULD FIX SOMETIME, PROBABLY NOT IMPORTANT THOUGH.
+  startpoint = str(start_x)+','+str(margin_bottom)/1000.
+  r.drain(input='tmp', drain=tribThalweg, start_coordinates=startpoint)
+  """
+
+
+
+# Try r.sim.water
+
+
+"""
+# Old method with r.drain -- doesn't work well. Using r.watershed instead.
 DEMs = gscript.parse_command('g.list', type='raster', pattern='*__DEM__*').keys()
 DEMs = sorted(DEMs)
 for DEM in DEMs:
@@ -278,18 +317,16 @@ for DEM in DEMs:
   start_y = _y[:,1][drainarray[:,1] == np.min(drainarray[:,1])]
   if len(start_y) > 0:
     start_y = start_y[0] # ARBITRARY, SHOULD FIX SOMETIME, PROBABLY NOT IMPORTANT THOUGH; COULD JUST TAKE [0], ABOVE
-  startpoint = str(margin_left/1000.)+','+str(start_y)
+  start_x = margin_left/1000.
+  startpoint = str(start_x)+','+str(start_y)
   r.drain(input='tmp', drain=mainThalweg, start_coordinates=startpoint)
   # Tributary channel
-  start_x = _x[drainarray[-2,:] == np.min(drainarray[-2,:]] # CHECK INDEXING (TOP/BOTTOM)
+  start_x = _x[drainarray[-2,:] == np.min(drainarray[-2,:])] # CHECK INDEXING (TOP/BOTTOM)
   if len(start_x) > 0:
     start_x = start_x[0] # ARBITRARY, SHOULD FIX SOMETIME, PROBABLY NOT IMPORTANT THOUGH.
   startpoint = str(start_x)+','+str(margin_bottom)/1000.
   r.drain(input='tmp', drain=tribThalweg, start_coordinates=startpoint)
-
-
-
-
+"""
 
 
 
