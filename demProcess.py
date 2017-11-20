@@ -248,6 +248,7 @@ def outputByType(self):
 # And may want to define boundaries as closed or open -- for this,
 # just r.patch a wall around everything except the end of the flume on the RHS.
 
+g.region(raster=DEMs[0])
 reg = gscript.region()
 g.region(w=reg['w']-2*reg['ewres'], e=reg['e']+2*reg['ewres'], s=reg['s']-2*reg['nsres'], n=reg['n']+2*reg['nsres'], save='with_boundaries', overwrite=True)
 # CUSTOM COMMANDS HERE TO CREATE WALL BASED ON X AND Y POSITIONS
@@ -271,23 +272,27 @@ drainarray = garray.array()
 DEMs = gscript.parse_command('g.list', type='raster', pattern='*__DEM__*').keys()
 DEMs = sorted(DEMs)
 for DEM in DEMs:
+  print DEM
   r.patch(input='boundaries,'+DEM, output='tmp', overwrite=True)
   drainarray.read('tmp')
   scanName = DEM.split('__DEM__')[0]
   mainThalweg = scanName + '__main_thalweg__'
   tribThalweg = scanName + '__trib_thalweg__'
   # Main channel
-  #start_x = margin_left/1000.
+  start_x = margin_left/1000. + .1
+  start_y = _y[:,1][drainarray[:,1] == np.min(drainarray[:,1])]
   #start_y = _y[:,1][drainarray[:,1] == np.min(drainarray[:,1])]
   flowIn = garray.array()
-  flowIn[:,2][drainarray[:,2] < (np.min(drainarray[:,2])+.01)] = 1
+  flowIn[:] = ( (_x <= (margin_left/1000. + .01)) * (_x > _x[0,1]) ) * (_y >= 1.28) * (_y <= 1.30)
+  #flowIn[:,2][drainarray[:,2] < (np.min(drainarray[:,2])+.01)] = 1
   flowIn.write('tmpFlowIn', overwrite=True)
-  r.watershed(elevation='tmp', flow='tmpFlowIn', threshold=np.sum(flowIn), stream='tmpStream', accumulation='tmpAccum', flags='s', overwrite=True)
-  r.mapcalc('tmpStreamZ = (tmpStream * 0 + 1) * tmp', overwrite=True)
-  r.to_vect(input='tmpStreamZ', output='tmpStreamLine', type='line', overwrite=True)
-  r.to_vect(input='tmpStreamZ', output='tmpStreamPoints', type='point', column='z', overwrite=True)
-  v.db_addcolumn(map='tmpStreamPoints', columns='x double precision, y double precision')
-  v.to_db(map='tmpStreamPoints', option='coor', columns='x,y')
+  # Must fix here: some cells on wall at boundary
+  r.watershed(elevation='tmp', flow='tmpFlowIn', threshold=np.sum(flowIn), stream='tmpStream', accumulation='tmpAccum', flags='s', quiet=True, overwrite=True)
+  r.mapcalc('tmpStreamZ = (tmpStream * 0 + 1) * tmp', quiet=True, overwrite=True)
+  r.to_vect(input='tmpStreamZ', output='Line__'+DEM, type='line', quiet=True, overwrite=True)
+  r.to_vect(input='tmpStreamZ', output='Points__'+DEM, type='point', column='z', quiet=True, overwrite=True)
+  v.db_addcolumn(map='Points__'+DEM, columns='x double precision, y double precision', quiet=True)
+  v.to_db(map='Points__'+DEM, option='coor', columns='x,y',  quiet=True)
   """
   # Tributary channel
   start_x = _x[drainarray[-2,:] == np.min(drainarray[-2,:])] # CHECK INDEXING (TOP/BOTTOM)
