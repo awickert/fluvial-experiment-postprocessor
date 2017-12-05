@@ -35,3 +35,15 @@ do
     r.mapcalc "DEM_$seconds = DEM_$seconds" --o # Replace DEM with clipped version
 done
 
+for file in `ls *.DAT`
+do
+    seconds=${file:8:7}
+    echo
+    echo $seconds
+    echo
+    # Export
+    r.out.bin in=DEM_$seconds out=DEM_$seconds.bil -b
+    v.out.ogr in=channel_centerline_$seconds out=channel_centerline_$seconds
+done
+
+
