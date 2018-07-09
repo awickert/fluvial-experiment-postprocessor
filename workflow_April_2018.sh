@@ -18,7 +18,7 @@ done
 cd ..
 mkdir DEMs
 cd DEMs
-for name in `g.list rast pattern="DEM_fullextent_*???????.tif`
+for name in `g.list rast pattern="DEM_fullextent_???????"`
 do
     echo $name
     r.out.gdal input=$name output=$name.tif --o

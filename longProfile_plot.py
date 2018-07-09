@@ -21,7 +21,12 @@ for i in range (len(LPfiles)):
 
   ax.cla()
 
-  lp = np.genfromtxt(LPfile, delimiter=',', skip_header=1)
+  try:
+      lp = np.genfromtxt(LPfile, delimiter=',', skip_header=2)
+  except:
+      print "Failed to load:", LPfile
+      continue
+  lp = lp[lp[:,3].argsort()] # sort by x
 
   x = lp[:,3] # x direction of flume
   z = lp[:,5]
